@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google Easter Eggs Explorer</title>
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:Arial,sans-serif;
+  background:linear-gradient(180deg,#090b16,#111827,#090b16);
+  color:#fff;
+  min-height:100vh;
+}
+
+header{
+  padding:40px 20px 25px;
+  text-align:center;
+}
+
+.logo{
+  font-size:42px;
+  font-weight:bold;
+  background:linear-gradient(90deg,#4285F4,#8B5CF6,#EA4335,#34A853,#FBBC05);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.sub{
+  color:#94A3B8;
+  margin-top:8px;
+}
+
+.searchBox{
+  width:min(850px,92%);
+  margin:25px auto;
+  background:#1E293B;
+  border:2px solid #334155;
+  border-radius:30px;
+  display:flex;
+  align-items:center;
+  padding:6px;
+}
+
+.searchBox input{
+  flex:1;
+  background:none;
+  border:none;
+  color:white;
+  font-size:18px;
+  padding:16px;
+  outline:none;
+}
+
+.searchBox button{
+  width:60px;
+  height:60px;
+  border-radius:20px;
+  border:none;
+  background:#3B82F6;
+  color:white;
+  font-size:24px;
+  cursor:pointer;
+}
+
+.categories{
+  display:flex;
+  overflow-x:auto;
+  gap:10px;
+  padding:10px 20px 20px;
+}
+
+.categories button{
+  background:#182236;
+  border:none;
+  color:#CBD5E1;
+  padding:12px 18px;
+  border-radius:999px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+
+.categories button.active{
+  background:#2563EB;
+  color:white;
+}
+
+.stats{
+  width:min(900px,95%);
+  margin:auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+  gap:15px;
+}
+
+.stat{
+  background:#111827;
+  border:1px solid #1F2937;
+  padding:18px;
+  border-radius:20px;
+  text-align:center;
+}
+
+.stat b{
+  font-size:28px;
+  color:#60A5FA;
+}
+
+#results{
+  width:min(1200px,96%);
+  margin:25px auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+  gap:18px;
+}
+
+.card{
+  background:#111827;
+  border:1px solid #273449;
+  border-radius:22px;
+  padding:18px;
+  cursor:pointer;
+  transition:.25s;
+}
+
+.card:hover{
+  transform:translateY(-5px);
+  border-color:#3B82F6;
+}
+
+.card h3{color:#93C5FD;margin-bottom:8px}
+.card p{color:#CBD5E1;font-size:14px;margin:10px 0}
+
+.badge{
+  display:inline-block;
+  padding:6px 12px;
+  border-radius:20px;
+  font-size:12px;
+  margin-top:8px;
+}
+
+.active{background:#14532D;color:#86EFAC}
+.removed{background:#450A0A;color:#FCA5A5}
+
+#panel{
+  position:fixed;
+  inset:0 0 0 auto;
+  width:min(430px,100%);
+  background:#0F172A;
+  border-left:2px solid #2563EB;
+  transform:translateX(100%);
+  transition:.35s;
+  display:flex;
+  flex-direction:column;
+}
+
+#panel.show{transform:translateX(0)}
+
+#panel header{
+  padding:20px;
+  text-align:left;
+  border-bottom:1px solid #233049;
+}
+
+#panelContent{
+  flex:1;
+  overflow:auto;
+  padding:20px;
+}
+
+#panel button{
+  width:100%;
+  margin-top:12px;
+  padding:14px;
+  border:none;
+  border-radius:14px;
+  background:#2563EB;
+  color:white;
+}
+
+footer{
+  padding:25px;
+  text-align:center;
+  color:#64748B;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Google Easter Eggs Explorer</div>
+  <div class="sub">Moteur de recherche des Easter Eggs Google (XML)</div>
+</header>
+
+<div class="searchBox">
+  <input id="search" placeholder="Rechercher un Easter Egg...">
+  <button onclick="render()">🔍</button>
+</div>
+
+<div class="categories">
+  <button class="active" onclick="category('all',this)">Tous</button>
+  <button onclick="category('Jeu',this)">🎮 Jeux</button>
+  <button onclick="category('Animation',this)">✨ Animations</button>
+  <button onclick="category('Chrome',this)">🌐 Chrome</button>
+  <button onclick="category('Geek',this)">🧠 Geek</button>
+  <button onclick="category('Removed',this)">❌ Retirés</button>
+</div>
+
+<div class="stats">
+  <div class="stat"><b id="count">0</b><br>Easter Eggs</div>
+  <div class="stat"><b id="activeCount">0</b><br>Actifs</div>
+  <div class="stat"><b id="removedCount">0</b><br>Retirés</div>
+  <div class="stat"><b id="browser">?</b><br>Navigateur</div>
+</div>
+
+<div id="results"></div>
+
+<div id="panel">
+<header>
+  <h2 id="title"></h2>
+</header>
+<div id="panelContent"></div>
+</div>
+
+<footer>
+Compatible PC • Android • Chrome • Lecture XML automatique
+</footer>
+
+<script>
+let eggs=[];
+let filter="all";
+
+async function loadXML(){
+    const xmlText=await fetch("google_easter_eggs.xml").then(r=>r.text());
+    const xml=new DOMParser().parseFromString(xmlText,"application/xml");
+
+    eggs=[...xml.querySelectorAll("egg")].map(e=>({
+        id:e.getAttribute("id"),
+        name:e.querySelector("name")?.textContent||"",
+        category:e.querySelector("category")?.textContent||"",
+        status:e.querySelector("status")?.textContent||"active",
+        query:e.querySelector("query")?.textContent||"",
+        description:e.querySelector("description")?.textContent||"",
+        platform:e.querySelector("platform")?.textContent||"Google"
+    }));
+
+    updateStats();
+
+    const urlParam=decodeURIComponent(location.search.slice(1)).toLowerCase();
+
+    if(urlParam){
+        document.getElementById("search").value=urlParam;
+        if(["jeu","animation","chrome","geek","removed"].includes(urlParam)){
+            filter=urlParam==="removed"?"Removed":urlParam.charAt(0).toUpperCase()+urlParam.slice(1);
+        }
+    }
+
+    render();
+}
+
+function render(){
+
+ const value=document.getElementById("search").value.toLowerCase();
+ const box=document.getElementById("results");
+ box.innerHTML="";
+
+ eggs.filter(e=>{
+    const okFilter=filter==="all"||e.category===filter||(filter==="Removed"&&e.status==="removed");
+    const okSearch=e.name.toLowerCase().includes(value)||e.query.toLowerCase().includes(value)||e.description.toLowerCase().includes(value)||e.category.toLowerCase().includes(value);
+    return okFilter&&okSearch;
+ }).forEach(e=>{
+
+    const card=document.createElement("div");
+    card.className="card";
+
+    card.innerHTML=`
+      <h3>${e.name}</h3>
+      <small>${e.category} • ${e.platform}</small>
+      <p>${e.description}</p>
+      <span class="badge ${e.status==='removed'?'removed':'active'}">${e.status==='removed'?'Retiré':'Actif'}</span>`;
+
+    card.onclick=()=>openEgg(e);
+    box.appendChild(card);
+ });
+}
+
+function openEgg(e){
+ panel.classList.add("show");
+ title.textContent=e.name;
+ panelContent.innerHTML=`
+ <p><b>Catégorie :</b> ${e.category}</p>
+ <p><b>Plateforme :</b> ${e.platform}</p>
+ <p><b>Statut :</b> ${e.status}</p>
+ <br>
+ <p>${e.description}</p>
+ <br>
+ <p><b>Recherche Google :</b></p>
+ <div style="background:#172554;padding:12px;border-radius:12px;margin-top:8px;color:#93C5FD">${e.query}</div>
+
+ <button onclick="window.open('https://www.google.com/search?q='+encodeURIComponent('${e.query}'))">Ouvrir dans Google</button>
+ <button onclick="history.pushState({},'', '?${e.query}')">Créer le lien ?${e.query}</button>
+ <button onclick="panel.classList.remove('show')">Fermer</button>`;
+}
+
+function category(cat,btn){
+ filter=cat;
+ document.querySelectorAll('.categories button').forEach(b=>b.classList.remove('active'));
+ btn.classList.add('active');
+ render();
+}
+
+search.addEventListener("input",render);
+
+function updateStats(){
+ count.textContent=eggs.length;
+ activeCount.textContent=eggs.filter(e=>e.status!=="removed").length;
+ removedCount.textContent=eggs.filter(e=>e.status==="removed").length;
+
+ const ua=navigator.userAgent;
+ let b="Autre";
+ if(ua.includes("Chrome")&&!ua.includes("Edg")&&!ua.includes("OPR")) b="Chrome";
+ else if(ua.includes("Firefox")) b="Firefox";
+ else if(ua.includes("Edg")) b="Edge";
+ else if(ua.includes("SamsungBrowser")) b="Samsung";
+ browser.textContent=b;
+}
+
+loadXML();
+</script>
+
+</body>
+</html>
